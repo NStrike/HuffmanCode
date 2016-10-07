@@ -44,8 +44,6 @@ int file_tree_size(FILE *file)
 		{
 			size += pow(2,i+8);
 		}
-
-		printf("%d %d\n", i, size);
 	}
 
 	for(i = 7; i >= 0; i--)
@@ -54,8 +52,6 @@ int file_tree_size(FILE *file)
 		{
 			size += pow(2,i);
 		}
-
-		printf("%d %d\n", i, size);
 	}
 
 	return size;
@@ -76,8 +72,6 @@ int file_trash_size(FILE *file)
 		{
 			size += pow(2,i-5);
 		}
-
-		printf("%d %d\n", i, size);
 	}
 
 	return size;
@@ -152,7 +146,7 @@ void print_pre_order(Node *tree)
 		}
 	}
 
-	printf("%c", tree->letra);
+	printf("%d", tree->letra);
 
 	if(tree->left != NULL)
 	{
@@ -164,22 +158,86 @@ void print_pre_order(Node *tree)
 		print_pre_order(tree->right);
 	}
 }
+
+void decompress(FILE *fp, int tsize, int size_lixo, Node *raiz_da_arvre)
+{
+	FILE *file_decompress;
+
+	file_decompress  = fopen("exit_file.txt","w+");
+
+	fseek(fp , 0 , SEEK_END);
+	int numero_de_bit_arquivo = ftell(fp);
+
+	unsigned  char char_bite_corrente;
+	int bite_corrente, bits;
+
+	Node *find_pointer = raiz_da_arvre;
+
+	fseek(fp , 2+tsize , SEEK_SET);
+
+	for(bite_corrente = 2+tsize ; bite_corrente < numero_de_bit_arquivo-1 ; bite_corrente++)
+	{
+		char_bite_corrente = fgetc(fp);
+
+		for(bits = 7 ; bits >= 0 ; bits--)
+		{
+			if(is_bit_set(char_bite_corrente,bits))
+			{
+				find_pointer = find_pointer->right;
+			}
+
+			else
+			{
+				find_pointer = find_pointer->left;
+			}
+
+			if(find_pointer->left == NULL && find_pointer->right == NULL)
+			{
+				fprintf(file_decompress ,"%c", find_pointer->letra);
+				find_pointer = raiz_da_arvre;
+			}
+		}
+	}
+
+	char_bite_corrente = fgetc(fp);
+
+	for(bits = 7 ; bits >= size_lixo ; bits--)
+	{
+		if(is_bit_set(char_bite_corrente,bits))
+		{
+			find_pointer = find_pointer->right;
+		}
+
+		else
+		{
+			find_pointer = find_pointer->left;
+		}
+
+		if(find_pointer->left == NULL && find_pointer->right == NULL)
+		{
+			fprintf(file_decompress , "%c", find_pointer->letra);
+			find_pointer = raiz_da_arvre;
+		}
+	}
+
+	fclose(file_decompress);
+}
+
 int main ()
 {
     FILE *fp;
-    fp = fopen("compressed.huff", "r");
+    fp = fopen("compressed_file.huff", "rb");
     int sizelixo, sizetree;
 
     sizelixo = file_trash_size(fp);
     sizetree = file_tree_size(fp);
-    printf("passa\n");
-
-    printf("%d %d\n", sizelixo, sizetree);
 
     Node* tree = NULL;
 
-    tree = file_tree(fp,sizetree);    
-    print_pre_order(tree);
+    tree = file_tree(fp,sizetree);
+
+    decompress(fp,sizetree,sizelixo,tree);
+
     fclose (fp);
     return 0;
 }
